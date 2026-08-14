@@ -7,6 +7,8 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
+    ListToolsResultSchema,
+    CallToolResultSchema,
     Tool
 } from "@modelcontextprotocol/sdk/types.js";
 
@@ -49,7 +51,7 @@ async function startSubServers() {
         
         const toolsResponse: any = await client.request(
             { method: "tools/list" },
-            ListToolsRequestSchema
+            ListToolsResultSchema
         );
         
         const tools: Tool[] = toolsResponse.tools || [];
@@ -94,7 +96,10 @@ async function main() {
             };
         }
         
-        return await targetClient.request(request, CallToolRequestSchema);
+        return await targetClient.request(
+            { method: "tools/call", params: request.params },
+            CallToolResultSchema
+        );
     });
 
     // --- Konfiguracja Express i SSE ---
