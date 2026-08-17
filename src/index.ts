@@ -80,6 +80,38 @@ function createMcpServer(): Server {
     return server;
 }
 
+class AbsoluteSSEServerTransport extends SSEServerTransport {
+    private _absoluteEndpointUrl: string;
+
+    constructor(endpoint: string, res: express.Response) {
+        super(endpoint, res);
+        this._absoluteEndpointUrl = endpoint;
+    }
+
+    override async start(): Promise<void> {
+        if ((this as any)._sseResponse) {
+            throw new Error('SSEServerTransport already started!');
+        }
+        (this as any).res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache, no-transform',
+            Connection: 'keep-alive',
+            'Access-Control-Allow-Origin': '*'
+        });
+        
+        const urlObj = new URL(this._absoluteEndpointUrl);
+        urlObj.searchParams.set('sessionId', (this as any)._sessionId);
+        const fullUrlWithSession = urlObj.toString();
+
+        (this as any).res.write(`event: endpoint\ndata: ${fullUrlWithSession}\n\n`);
+        (this as any)._sseResponse = (this as any).res;
+        (this as any).res.on('close', () => {
+            (this as any)._sseResponse = undefined;
+            this.onclose?.();
+        });
+    }
+}
+
 async function main() {
     process.stderr.write("Uruchamianie serwera agregującego Polskie Prawo...\n");
     await startSubServers();
@@ -96,7 +128,7 @@ async function main() {
             const host = req.get("host") || "localhost:3000";
             const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
             const absoluteUrl = `${protocol}://${host}/message`;
-            const transport = new SSEServerTransport(absoluteUrl, res);
+            const transport = new AbsoluteSSEServerTransport(absoluteUrl, res);
             const server = createMcpServer();
             
             await server.connect(transport);
