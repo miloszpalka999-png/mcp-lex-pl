@@ -93,7 +93,10 @@ async function main() {
     app.get("/sse", async (req, res) => {
         try {
             console.log("[HTTP] Nowe połączenie SSE nawiązane");
-            const transport = new SSEServerTransport("/message", res);
+            const host = req.get("host") || "localhost:3000";
+            const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+            const absoluteUrl = `${protocol}://${host}/message`;
+            const transport = new SSEServerTransport(absoluteUrl, res);
             const server = createMcpServer();
             
             await server.connect(transport);
